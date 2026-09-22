@@ -1,607 +1,105 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0b1220" />
-  <title>Bank Control — Registro de Tickets</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-  <style>
-    :root{
-      --bg:#070b14; --panel:#0e1626; --panel2:#121c30; --line:#21304a;
-      --text:#eef4ff; --muted:#8ea0ba; --blue:#4f8cff; --cyan:#35d4ff;
-      --green:#27d17f; --red:#ff5d6c; --yellow:#f6c453; --white:#fff;
-      --shadow:0 18px 50px rgba(0,0,0,.28); --radius:18px;
-    }
-    *{box-sizing:border-box}
-    html{scroll-behavior:smooth}
-    body{
-      margin:0; background:
-      radial-gradient(circle at 85% 0%,rgba(79,140,255,.12),transparent 28%),
-      radial-gradient(circle at 0% 30%,rgba(53,212,255,.06),transparent 25%),var(--bg);
-      color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-    }
-    button,input,select{font:inherit}
-    button{cursor:pointer}
-    .app{display:flex;min-height:100vh}
-    .sidebar{
-      width:250px;position:fixed;inset:0 auto 0 0;background:rgba(8,13,24,.94);
-      border-right:1px solid var(--line);padding:24px 16px;z-index:20;backdrop-filter:blur(18px)
-    }
-    .brand{display:flex;align-items:center;gap:12px;padding:8px 10px 28px}
-    .brand-mark{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;
-      background:linear-gradient(135deg,var(--blue),var(--cyan));font-weight:900;color:#06101d;
-      box-shadow:0 10px 30px rgba(79,140,255,.3)}
-    .brand strong{font-size:16px;display:block}.brand span{font-size:11px;color:var(--muted)}
-    .nav{display:grid;gap:7px}
-    .nav button{
-      width:100%;border:0;background:transparent;color:var(--muted);padding:12px 13px;border-radius:12px;
-      text-align:left;display:flex;gap:11px;align-items:center;font-weight:700
-    }
-    .nav button:hover,.nav button.active{background:#14213a;color:var(--text)}
-    .sidebar-foot{position:absolute;left:16px;right:16px;bottom:18px;color:#657793;font-size:11px;line-height:1.5}
-    main{margin-left:250px;width:calc(100% - 250px);padding:30px;max-width:1700px}
-    .topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:25px}
-    .eyebrow{color:var(--blue);font-size:11px;font-weight:900;letter-spacing:.13em;text-transform:uppercase}
-    h1{font-size:30px;margin:5px 0 0;letter-spacing:-.03em}
-    .top-actions{display:flex;gap:9px;flex-wrap:wrap}
-    .btn{
-      border:1px solid var(--line);background:var(--panel);color:var(--text);padding:11px 14px;
-      border-radius:12px;font-weight:800;transition:.2s
-    }
-    .btn:hover{transform:translateY(-1px);border-color:#36527b}
-    .btn.primary{border:0;background:linear-gradient(135deg,#4f8cff,#3671df);box-shadow:0 10px 25px rgba(79,140,255,.2)}
-    .btn.danger{color:#ff9aa4;border-color:#51232a}
-    .btn.small{padding:7px 10px;font-size:12px}
-    .view{display:none}.view.active{display:block}
-    .grid{display:grid;gap:16px}
-    .kpis{grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:18px}
-    .card{
-      background:linear-gradient(180deg,rgba(18,28,48,.92),rgba(11,19,33,.94));
-      border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)
-    }
-    .kpi{padding:18px;min-height:130px}
-    .kpi .label{font-size:12px;color:var(--muted);font-weight:700}.kpi .value{font-size:26px;font-weight:900;margin:10px 0 4px}
-    .kpi .sub{font-size:11px;color:var(--muted)}
-    .positive{color:var(--green)!important}.negative{color:var(--red)!important}.warning{color:var(--yellow)!important}
-    .two{grid-template-columns:1.35fr .65fr}.three{grid-template-columns:repeat(3,1fr)}
-    .panel{padding:20px}.panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:17px}
-    .panel-head h2{font-size:16px;margin:0}.panel-head p{font-size:12px;color:var(--muted);margin:5px 0 0}
-    .chart-wrap{height:320px;position:relative}.chart-wrap.short{height:245px}
-    .form-grid{grid-template-columns:repeat(2,1fr)}
-    label{display:block;color:#a9b7cc;font-size:12px;font-weight:800;margin-bottom:7px}
-    input,select{
-      width:100%;background:#091222;color:var(--text);border:1px solid #253754;border-radius:11px;
-      padding:12px;outline:none
-    }
-    input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(79,140,255,.12)}
-    .field{margin-bottom:14px}.full{grid-column:1/-1}
-    .hint{font-size:11px;color:var(--muted);margin-top:5px}
-    .form-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:5px}
-    .ticket-list{display:grid;gap:10px}
-    .ticket{
-      border:1px solid var(--line);background:#0b1424;border-radius:14px;padding:14px;
-      display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center
-    }
-    .ticket-main{min-width:0}.ticket-title{font-weight:900}.ticket-meta{color:var(--muted);font-size:11px;margin-top:5px}
-    .ticket-right{text-align:right}.ticket-amount{font-size:18px;font-weight:900}
-    .badge{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:900;margin-left:5px}
-    .badge.pending{background:#332a13;color:#f7cf67}.badge.won{background:#0d3426;color:#52e39b}.badge.lost{background:#3a1820;color:#ff7d89}
-    .ticket-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:9px}
-    .empty{padding:35px 15px;text-align:center;color:var(--muted);border:1px dashed #2a3a55;border-radius:13px}
-    .filters{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.filters .field{min-width:150px;margin:0}
-    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px}
-    table{width:100%;border-collapse:collapse;min-width:700px}th,td{padding:12px 13px;border-bottom:1px solid #1d2b43;text-align:left;font-size:12px}
-    th{color:#7f91ad;font-size:10px;text-transform:uppercase;letter-spacing:.06em;background:#0b1424}tr:last-child td{border-bottom:0}
-    .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:50;align-items:center;justify-content:center;padding:20px}
-    .modal-backdrop.open{display:flex}.modal{width:min(540px,100%);background:#0d1728;border:1px solid var(--line);border-radius:20px;padding:22px;box-shadow:0 30px 100px #000}
-    .modal h2{margin:0 0 5px}.modal p{color:var(--muted);font-size:12px;margin-top:0}
-    .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
-    .toast{position:fixed;right:22px;bottom:22px;background:#12223b;border:1px solid #2f4d78;color:#fff;padding:12px 15px;border-radius:12px;
-      box-shadow:var(--shadow);z-index:100;transform:translateY(20px);opacity:0;pointer-events:none;transition:.25s;font-size:12px;font-weight:800}
-    .toast.show{transform:translateY(0);opacity:1}
-    .note{background:#0b1729;border:1px solid #213b61;padding:13px;border-radius:12px;color:#aebbd0;font-size:12px;line-height:1.55}
-    .bank-hero{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:25px;margin-bottom:18px}
-    .bank-hero .big{font-size:42px;font-weight:950;letter-spacing:-.04em}.bank-hero .caption{color:var(--muted);font-size:12px}
-    .mini-stat{padding:16px}.mini-stat b{display:block;font-size:20px;margin-top:7px}
-    .mobile-menu{display:none}
-    @media(max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}.two{grid-template-columns:1fr}.three{grid-template-columns:1fr}}
-    @media(max-width:780px){
-      .sidebar{transform:translateX(-100%);transition:.25s}.sidebar.open{transform:translateX(0)}
-      main{margin-left:0;width:100%;padding:18px}.mobile-menu{display:block}
-      .topbar{align-items:flex-start}.kpis{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}
-      .bank-hero{display:block}.bank-hero .big{font-size:34px;margin:10px 0}
-    }
-    @media(max-width:480px){.kpis{grid-template-columns:1fr}.top-actions{width:100%}.top-actions .btn{flex:1}.ticket{grid-template-columns:1fr}}
-  </style>
-</head>
-<body>
-<div class="app">
-  <aside class="sidebar" id="sidebar">
-    <div class="brand">
-      <div class="brand-mark">B</div>
-      <div><strong>Bank Control</strong><span>Personal betting tracker</span></div>
-    </div>
-    <nav class="nav">
-      <button class="active" data-view="dashboard">◈ <span>Dashboard</span></button>
-      <button data-view="tickets">▣ <span>Tickets</span></button>
-      <button data-view="movimientos">↕ <span>Movimientos</span></button>
-      <button data-view="analisis">◌ <span>Análisis</span></button>
-      <button data-view="configuracion">⚙ <span>Configuración</span></button>
-    </nav>
-    <div class="sidebar-foot">Tus datos se guardan localmente en este navegador mediante LocalStorage.<br><br>No necesitas una cuenta ni servidor.</div>
-  </aside>
-
-  <main>
-    <header class="topbar">
-      <div>
-        <button class="btn mobile-menu" id="menuBtn">☰</button>
-        <div class="eyebrow">CONTROL PERSONAL</div>
-        <h1 id="pageTitle">Dashboard</h1>
-      </div>
-      <div class="top-actions">
-        <button class="btn" id="exportBtn">Exportar</button>
-        <button class="btn primary" data-view="tickets" id="quickTicket">+ Nuevo ticket</button>
-      </div>
-    </header>
-
-    <!-- DASHBOARD -->
-    <section class="view active" id="dashboard">
-      <div class="card bank-hero">
-        <div><div class="caption">BANK DISPONIBLE</div><div class="big" id="heroBank">$0.00</div><div class="caption" id="heroSub">Capital total: $0.00</div></div>
-        <div class="grid three" style="min-width:min(600px,100%)">
-          <div class="mini-stat"><span class="caption">Expuesto</span><b id="heroExposure">$0.00</b></div>
-          <div class="mini-stat"><span class="caption">P/L histórico</span><b id="heroProfit">$0.00</b></div>
-          <div class="mini-stat"><span class="caption">ROI</span><b id="heroRoi">0.00%</b></div>
-        </div>
-      </div>
-
-      <div class="grid kpis">
-        <div class="card kpi"><div class="label">APOSTADO</div><div class="value" id="kpiStaked">$0</div><div class="sub">Tickets liquidados + pendientes</div></div>
-        <div class="card kpi"><div class="label">GANADO</div><div class="value positive" id="kpiWon">$0</div><div class="sub">Retorno de tickets ganados</div></div>
-        <div class="card kpi"><div class="label">PERDIDO</div><div class="value negative" id="kpiLost">$0</div><div class="sub">Stake de tickets perdidos</div></div>
-        <div class="card kpi"><div class="label">TICKETS</div><div class="value" id="kpiTickets">0</div><div class="sub"><span id="kpiRecord">0W · 0L · 0P</span></div></div>
-        <div class="card kpi"><div class="label">CUOTA PROMEDIO</div><div class="value" id="kpiOdds">0.00</div><div class="sub">De todos los tickets</div></div>
-      </div>
-
-      <div class="grid two">
-        <div class="card panel">
-          <div class="panel-head"><div><h2>Bank a través del tiempo</h2><p>Evolución según movimientos y resultados.</p></div></div>
-          <div class="chart-wrap"><canvas id="bankChart"></canvas></div>
-        </div>
-        <div class="card panel">
-          <div class="panel-head"><div><h2>Distribución de tickets</h2><p>Resultado de tus pronósticos.</p></div></div>
-          <div class="chart-wrap short"><canvas id="resultChart"></canvas></div>
-        </div>
-      </div>
-      <div style="height:16px"></div>
-      <div class="card panel">
-        <div class="panel-head"><div><h2>Actividad reciente</h2><p>Últimos tickets registrados.</p></div><button class="btn small" data-view="tickets">Ver todos</button></div>
-        <div class="ticket-list" id="recentTickets"></div>
-      </div>
-    </section>
-
-    <!-- TICKETS -->
-    <section class="view" id="tickets">
-      <div class="grid two">
-        <div class="card panel">
-          <div class="panel-head"><div><h2>Registrar ticket</h2><p>No necesitas guardar el pronóstico específico. Solo el control financiero.</p></div></div>
-          <form id="ticketForm">
-            <div class="grid form-grid">
-              <div class="field">
-                <label>Importe apostado *</label>
-                <input id="betAmount" type="number" min="0.01" step="0.01" placeholder="Ej. 10.00" required>
-              </div>
-              <div class="field">
-                <label>Cuota final *</label>
-                <input id="betOdds" type="number" min="1.01" step="0.01" placeholder="Ej. 1.85" required>
-              </div>
-              <div class="field">
-                <label>Fecha y hora</label>
-                <input id="betDate" type="datetime-local" required>
-              </div>
-              <div class="field">
-                <label>Referencia opcional</label>
-                <input id="betNote" type="text" maxlength="80" placeholder="Ej. Ticket MLB / combinado">
-              </div>
-            </div>
-            <div class="note">El ticket se registra inicialmente como <b>PENDIENTE</b>. El bank disponible descuenta automáticamente el importe mientras el ticket está abierto. Cuando marques <b>GANADO</b>, se añadirá el retorno total (importe × cuota).</div>
-            <div class="form-actions"><button class="btn primary" type="submit">Registrar ticket</button></div>
-          </form>
-        </div>
-        <div class="card panel">
-          <div class="panel-head"><div><h2>Resumen de tickets</h2><p>Control rápido de tu actividad.</p></div></div>
-          <div class="grid three">
-            <div class="mini-stat"><span class="caption">Pendientes</span><b id="sumPending">$0</b></div>
-            <div class="mini-stat"><span class="caption">Posible retorno</span><b id="sumPotential">$0</b></div>
-            <div class="mini-stat"><span class="caption">Tickets</span><b id="sumCount">0</b></div>
-          </div>
-        </div>
-      </div>
-      <div style="height:16px"></div>
-      <div class="card panel">
-        <div class="panel-head"><div><h2>Historial de tickets</h2><p>Marca el resultado cuando termine cada ticket.</p></div>
-          <div class="filters">
-            <div class="field"><label>Estado</label><select id="ticketFilter"><option value="all">Todos</option><option value="pending">Pendientes</option><option value="won">Ganados</option><option value="lost">Perdidos</option></select></div>
-          </div>
-        </div>
-        <div class="ticket-list" id="ticketList"></div>
-      </div>
-    </section>
-
-    <!-- MOVIMIENTOS -->
-    <section class="view" id="movimientos">
-      <div class="grid two">
-        <div class="card panel">
-          <div class="panel-head"><div><h2>Registrar movimiento</h2><p>Recargas y retiros que afectan directamente tu bank.</p></div></div>
-          <form id="movementForm">
-            <div class="grid form-grid">
-              <div class="field"><label>Tipo *</label><select id="moveType"><option value="deposit">Recarga / depósito</option><option value="withdraw">Retiro</option></select></div>
-              <div class="field"><label>Importe *</label><input id="moveAmount" type="number" min="0.01" step="0.01" required placeholder="Ej. 50.00"></div>
-              <div class="field"><label>Fecha</label><input id="moveDate" type="datetime-local" required></div>
-              <div class="field"><label>Concepto opcional</label><input id="moveNote" maxlength="80" placeholder="Ej. Recarga semanal"></div>
-            </div>
-            <div class="form-actions"><button class="btn primary" type="submit">Guardar movimiento</button></div>
-          </form>
-        </div>
-        <div class="card panel">
-          <div class="panel-head"><div><h2>Bank inicial</h2><p>Se usa como punto de partida de todos los cálculos.</p></div></div>
-          <div class="field"><label>Bank inicial</label><input id="initialBankInput" type="number" min="0" step="0.01"></div>
-          <button class="btn primary" id="saveInitialBank">Guardar bank inicial</button>
-          <div style="height:14px"></div>
-          <div class="note">Puedes cambiar este valor si estás empezando el registro desde cero o si quieres reconstruir tu historial desde un punto concreto.</div>
-        </div>
-      </div>
-      <div style="height:16px"></div>
-      <div class="card panel">
-        <div class="panel-head"><div><h2>Historial de movimientos</h2><p>Recargas y retiros registrados.</p></div></div>
-        <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Importe</th><th></th></tr></thead><tbody id="movementTable"></tbody></table></div>
-      </div>
-    </section>
-
-    <!-- ANALISIS -->
-    <section class="view" id="analisis">
-      <div class="card panel">
-        <div class="panel-head"><div><h2>Panel de análisis</h2><p>Filtra por período como un mini Power BI personal.</p></div></div>
-        <div class="filters">
-          <div class="field"><label>Desde</label><input id="filterFrom" type="date"></div>
-          <div class="field"><label>Hasta</label><input id="filterTo" type="date"></div>
-          <button class="btn" id="clearFilters">Limpiar</button>
-          <button class="btn primary" id="applyFilters">Aplicar filtro</button>
-        </div>
-      </div>
-      <div style="height:16px"></div>
-      <div class="grid kpis">
-        <div class="card kpi"><div class="label">APOSTADO EN PERÍODO</div><div class="value" id="aStaked">$0</div><div class="sub">Incluye pendientes</div></div>
-        <div class="card kpi"><div class="label">GANANCIAS</div><div class="value positive" id="aProfit">$0</div><div class="sub">P/L neto del período</div></div>
-        <div class="card kpi"><div class="label">RECARGADO</div><div class="value" id="aDeposits">$0</div><div class="sub">Dinero añadido</div></div>
-        <div class="card kpi"><div class="label">RETIRADO</div><div class="value" id="aWithdrawals">$0</div><div class="sub">Dinero retirado</div></div>
-        <div class="card kpi"><div class="label">ROI</div><div class="value" id="aRoi">0.00%</div><div class="sub">Resultado / apostado</div></div>
-      </div>
-      <div class="grid two">
-        <div class="card panel"><div class="panel-head"><div><h2>Volumen por período</h2><p>Apostado, ganado y perdido.</p></div></div><div class="chart-wrap"><canvas id="volumeChart"></canvas></div></div>
-        <div class="card panel"><div class="panel-head"><div><h2>Resultados por cantidad</h2><p>Comparación de tickets.</p></div></div><div class="chart-wrap"><canvas id="periodResultChart"></canvas></div></div>
-      </div>
-      <div style="height:16px"></div>
-      <div class="card panel">
-        <div class="panel-head"><div><h2>Indicadores</h2><p>Lectura rápida del período seleccionado.</p></div></div>
-        <div class="grid three">
-          <div class="mini-stat"><span class="caption">Tasa de acierto</span><b id="aHitRate">0.00%</b></div>
-          <div class="mini-stat"><span class="caption">Cuota promedio</span><b id="aAvgOdds">0.00</b></div>
-          <div class="mini-stat"><span class="caption">Stake promedio</span><b id="aAvgStake">$0.00</b></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- CONFIG -->
-    <section class="view" id="configuracion">
-      <div class="card panel">
-        <div class="panel-head"><div><h2>Configuración y respaldo</h2><p>Tu información queda en este navegador.</p></div></div>
-        <div class="grid two">
-          <div>
-            <h3 style="margin-top:0">Exportar datos</h3>
-            <p style="color:var(--muted);font-size:12px">Descarga un archivo JSON con tickets, movimientos y configuración. Úsalo como respaldo.</p>
-            <button class="btn primary" id="exportBtn2">Descargar respaldo</button>
-          </div>
-          <div>
-            <h3 style="margin-top:0">Importar respaldo</h3>
-            <p style="color:var(--muted);font-size:12px">Restaura un archivo JSON previamente exportado.</p>
-            <input id="importFile" type="file" accept=".json">
-          </div>
-        </div>
-        <hr style="border:0;border-top:1px solid var(--line);margin:25px 0">
-        <h3>Zona de mantenimiento</h3>
-        <p style="color:var(--muted);font-size:12px">Borrar todo elimina permanentemente los datos guardados en este navegador.</p>
-        <button class="btn danger" id="clearAll">Borrar todos los datos</button>
-      </div>
-    </section>
-  </main>
-</div>
-
-<!-- RESULT MODAL -->
-<div class="modal-backdrop" id="resultModal">
-  <div class="modal">
-    <h2>¿Cuál fue el resultado?</h2>
-    <p id="resultModalText">Selecciona cómo terminó este ticket.</p>
-    <div class="grid three">
-      <div class="mini-stat"><span class="caption">Importe</span><b id="modalStake">$0</b></div>
-      <div class="mini-stat"><span class="caption">Cuota</span><b id="modalOdds">0.00</b></div>
-      <div class="mini-stat"><span class="caption">Retorno</span><b id="modalReturn">$0</b></div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn" id="closeModal">Cancelar</button>
-      <button class="btn danger" id="markLost">Perdido</button>
-      <button class="btn primary" id="markWon">Ganado</button>
-    </div>
-  </div>
-</div>
-<div class="toast" id="toast"></div>
-
-<script>
-(() => {
-  const KEY = "bankControl_v1";
-  const defaultState = { initialBank: 0, bets: [], movements: [] };
-  let state = load();
-  let resultBetId = null;
-  let charts = {};
-
-  const $ = id => document.getElementById(id);
-  const money = n => new Intl.NumberFormat("es-EC",{style:"currency",currency:"USD"}).format(Number(n)||0);
-  const num = n => Number(n)||0;
-  const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
-  const dateNow = () => {
-    const d = new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
-    return d.toISOString().slice(0,16);
-  };
-  const fmtDate = s => new Date(s).toLocaleString("es-EC",{dateStyle:"short",timeStyle:"short"});
-  const fmtDay = s => new Date(s).toLocaleDateString("es-EC",{day:"2-digit",month:"2-digit"});
-  function load(){
-    try { return {...defaultState,...JSON.parse(localStorage.getItem(KEY)||"{}")}; }
-    catch(e){ return {...defaultState}; }
+    bets.filter(isSettled).forEach(b=>events.push({date:b.settledAt||b.date,delta:betProfit(b),type:"result",bet:b}));
+    return events.sort((a,b)=>new Date(a.date)-new Date(b.date));
   }
-  function save(){ localStorage.setItem(KEY, JSON.stringify(state)); renderAll(); }
-  function toast(msg){
-    const t=$("toast");t.textContent=msg;t.classList.add("show");
-    clearTimeout(window.__toast);window.__toast=setTimeout(()=>t.classList.remove("show"),2400);
+  function drawdown(bets,initial){
+    // Drawdown de rendimiento: excluye depósitos/retiros para no confundir flujos externos con pérdidas.
+    let eq=num(initial),peak=eq,maxDd=0,currentDd=0;
+    bets.filter(isSettled).sort((a,b)=>new Date(a.settledAt||a.date)-new Date(b.settledAt||b.date)).forEach(b=>{
+      eq+=betProfit(b); peak=Math.max(peak,eq); const d=peak>0?(peak-eq)/peak*100:0; maxDd=Math.max(maxDd,d); currentDd=d;
+    });
+    return {maxDd,currentDd};
   }
-
-  // Bank logic:
-  // bank = initial + deposits - withdrawals - all stakes + winning returns.
-  function calc(){
-    const deposits=state.movements.filter(x=>x.type==="deposit").reduce((a,x)=>a+num(x.amount),0);
-    const withdrawals=state.movements.filter(x=>x.type==="withdraw").reduce((a,x)=>a+num(x.amount),0);
-    const staked=state.bets.reduce((a,x)=>a+num(x.amount),0);
-    const wonReturn=state.bets.filter(x=>x.status==="won").reduce((a,x)=>a+num(x.amount)*num(x.odds),0);
-    const pending=state.bets.filter(x=>x.status==="pending").reduce((a,x)=>a+num(x.amount),0);
-    const won=state.bets.filter(x=>x.status==="won");
-    const lost=state.bets.filter(x=>x.status==="lost");
-    const profit=won.reduce((a,x)=>a+num(x.amount)*(num(x.odds)-1),0)-lost.reduce((a,x)=>a+num(x.amount),0);
-    const bank=num(state.initialBank)+deposits-withdrawals-staked+wonReturn;
-    const capital=bank+pending;
-    const roi=staked?profit/staked*100:0;
-    return {deposits,withdrawals,staked,wonReturn,pending,won,lost,profit,bank,capital,roi};
+  function streakInfo(bets){
+    const seq=bets.filter(b=>b.status==="won"||b.status==="lost").sort((a,b)=>new Date(a.settledAt||a.date)-new Date(b.settledAt||b.date));
+    let currentType=null,current=0,bestW=0,bestL=0;seq.forEach(b=>{const t=b.status;if(t===currentType)current++;else{currentType=t;current=1}if(t==="won")bestW=Math.max(bestW,current);else bestL=Math.max(bestL,current)});return {currentType,current,bestW,bestL};
   }
+  function impliedProb(odds){return odds>0?100/odds:0}
+  function evPct(odds,probPct){if(!odds||!probPct)return null;const p=probPct/100;return (p*odds-1)*100}
+  function edgePct(odds,probPct){if(!odds||!probPct)return null;return probPct-impliedProb(odds)}
+  function clvPct(open,close){if(!open||!close)return null;return (open/close-1)*100}
 
   function renderAll(){
-    const c=calc();
-    $("heroBank").textContent=money(c.bank);
-    $("heroSub").textContent=`Capital total: ${money(c.capital)}`;
-    $("heroExposure").textContent=money(c.pending);
-    $("heroProfit").textContent=money(c.profit);
-    $("heroProfit").className="positive";
-    $("heroRoi").textContent=`${c.roi.toFixed(2)}%`;
-    $("heroRoi").className=c.roi>=0?"positive":"negative";
-
-    $("kpiStaked").textContent=money(c.staked);
-    $("kpiWon").textContent=money(c.wonReturn);
-    $("kpiLost").textContent=money(c.lost.reduce((a,x)=>a+num(x.amount),0));
-    $("kpiTickets").textContent=state.bets.length;
-    $("kpiRecord").textContent=`${c.won.length}W · ${c.lost.length}L · ${state.bets.filter(x=>x.status==="pending").length}P`;
-    const avg=state.bets.length?state.bets.reduce((a,x)=>a+num(x.odds),0)/state.bets.length:0;
-    $("kpiOdds").textContent=avg.toFixed(2);
-
-    $("sumPending").textContent=money(c.pending);
-    $("sumPotential").textContent=money(state.bets.filter(x=>x.status==="pending").reduce((a,x)=>a+num(x.amount)*num(x.odds),0));
-    $("sumCount").textContent=state.bets.length;
-
-    $("initialBankInput").value=num(state.initialBank);
-    renderTickets();
-    renderMovements();
-    renderRecent();
-    renderDashboardCharts();
-    renderAnalysis();
+    const c=calc(),st=streakInfo(state.bets); const avgOdds=state.bets.length?state.bets.reduce((a,b)=>a+num(b.odds),0)/state.bets.length:0;
+    $("heroBank").textContent=money(c.bank);$("heroSub").textContent=`Capital total: ${money(c.capital)}`;$("heroExposure").textContent=money(c.pending);
+    const expPct=c.capital>0?c.pending/c.capital*100:0;$("heroExposurePct").textContent=`${expPct.toFixed(1)}% del capital`;$("heroProfit").textContent=money(c.profit);$("heroProfit").className=c.profit>=0?"positive":"negative";$("heroRoi").textContent=pct(c.roi);$("heroRoi").className=c.roi>=0?"positive":"negative";$("heroDd").textContent=pct(c.dd.maxDd);$("heroDd").className=c.dd.maxDd>0?"warning":"positive";
+    $("kpiStaked").textContent=money(c.staked);$("kpiReturn").textContent=money(c.returned);$("kpiHit").textContent=pct(c.hit);$("kpiOdds").textContent=avgOdds.toFixed(2);$("kpiPf").textContent=Number.isFinite(c.pf)?c.pf.toFixed(2):"∞";$("kpiStreak").textContent=st.current?(st.currentType==="won"?`${st.current}W`:`${st.current}L`):"—";$("kpiStreak").className=`value ${st.currentType==="won"?"positive":st.currentType==="lost"?"negative":""}`;
+    $("riskCapital").textContent=money(c.capital);$("riskPending").textContent=money(c.pending);$("riskExposurePct").textContent=`${expPct.toFixed(1)}%`;$("riskExposureBar").style.width=`${Math.min(100,Math.max(0,expPct))}%`;
+    const avgStake=state.bets.length?c.staked/state.bets.length:0,maxStake=state.bets.length?Math.max(...state.bets.map(b=>num(b.amount))):0;$("riskAvgStake").textContent=money(avgStake);$("riskMaxStake").textContent=money(maxStake);
+    $("sumPending").textContent=money(c.pending);$("sumPotential").textContent=money(c.pendingBets.reduce((a,b)=>a+num(b.amount)*num(b.odds),0));$("sumCount").textContent=c.pendingBets.length;$("sumPendingOdds").textContent=c.pendingBets.length?(c.pendingBets.reduce((a,b)=>a+num(b.odds),0)/c.pendingBets.length).toFixed(2):"0.00";
+    $("initialBankInput").value=num(state.initialBank);renderSportOptions();renderTickets();renderMovements();renderRecent();renderDashboardCharts();renderAnalysis();renderQuality();previewBet();
   }
 
+  const statusLabel={pending:"PENDIENTE",won:"GANADO",lost:"PERDIDO",void:"ANULADO",cashout:"CASHOUT"};
   function ticketHtml(b){
-    const statusLabel={pending:"PENDIENTE",won:"GANADO",lost:"PERDIDO"}[b.status];
-    const ret=num(b.amount)*num(b.odds);
-    return `<div class="ticket">
-      <div class="ticket-main">
-        <div class="ticket-title">${escapeHtml(b.note||"Ticket general")}
-          <span class="badge ${b.status}">${statusLabel}</span>
-        </div>
-        <div class="ticket-meta">${fmtDate(b.date)} · Cuota ${num(b.odds).toFixed(2)} · Importe ${money(b.amount)}</div>
-      </div>
-      <div class="ticket-right">
-        <div class="ticket-amount">${money(ret)}</div>
-        <div class="ticket-meta">retorno total</div>
-        <div class="ticket-actions">
-          ${b.status==="pending"?`<button class="btn small primary" onclick="openResult('${b.id}')">Registrar resultado</button>`:""}
-          <button class="btn small danger" onclick="deleteBet('${b.id}')">Eliminar</button>
-        </div>
-      </div>
-    </div>`;
+    const ret=b.status==="pending"?num(b.amount)*num(b.odds):betReturn(b);const ev=b.modelProb?evPct(b.odds,b.modelProb):null;const clv=b.closingOdds?clvPct(b.odds,b.closingOdds):null;
+    const tags=[b.sport,b.market,b.bookmaker].filter(Boolean).map(x=>`<span class="tag">${safe(x)}</span>`).join("");
+    return `<div class="ticket"><div><div class="ticket-title">${safe(b.note||"Ticket general")} <span class="badge ${b.status}">${statusLabel[b.status]}</span></div><div class="ticket-meta">${fmtDate(b.date)} · Cuota ${num(b.odds).toFixed(2)} · Stake ${money(b.amount)}${b.settledAt?` · Liquidado ${fmtDate(b.settledAt)}`:""}</div>${tags?`<div class="ticket-tags">${tags}${ev!==null?`<span class="tag">EV ${ev.toFixed(1)}%</span>`:""}${clv!==null?`<span class="tag">CLV ${clv.toFixed(1)}%</span>`:""}</div>`:""}</div><div class="ticket-right"><div class="ticket-amount">${money(ret)}</div><div class="ticket-meta">${b.status==="pending"?"retorno potencial":"retorno real"}</div><div class="ticket-actions">${b.status==="pending"?`<button class="btn small primary" onclick="openResult('${b.id}')">Liquidar</button>`:""}<button class="btn small danger" onclick="deleteBet('${b.id}')">Eliminar</button></div></div></div>`;
   }
-  function renderTickets(){
-    const f=$("ticketFilter")?.value||"all";
-    const list=state.bets.filter(x=>f==="all"||x.status===f).sort((a,b)=>new Date(b.date)-new Date(a.date));
-    $("ticketList").innerHTML=list.length?list.map(ticketHtml).join(""):`<div class="empty">No hay tickets con este filtro.</div>`;
-  }
-  function renderRecent(){
-    const list=[...state.bets].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,5);
-    $("recentTickets").innerHTML=list.length?list.map(ticketHtml).join(""):`<div class="empty">Todavía no tienes tickets registrados. Empieza con tu primer ticket.</div>`;
-  }
-  function renderMovements(){
-    const rows=[...state.movements].sort((a,b)=>new Date(b.date)-new Date(a.date));
-    $("movementTable").innerHTML=rows.length?rows.map(x=>`<tr>
-      <td>${fmtDate(x.date)}</td><td>${x.type==="deposit"?"Recarga":"Retiro"}</td>
-      <td>${escapeHtml(x.note||"Sin concepto")}</td>
-      <td class="${x.type==="deposit"?"positive":"negative"}">${x.type==="deposit"?"+":"-"}${money(x.amount)}</td>
-      <td><button class="btn small danger" onclick="deleteMovement('${x.id}')">Eliminar</button></td>
-    </tr>`).join(""):`<tr><td colspan="5"><div class="empty">No hay movimientos registrados.</div></td></tr>`;
-  }
+  function filteredTickets(){const f=$("ticketFilter")?.value||"all",s=($("ticketSearch")?.value||"").toLowerCase().trim(),sport=$("ticketSportFilter")?.value||"all";return state.bets.filter(b=>(f==="all"||b.status===f)&&(sport==="all"||(b.sport||"")===sport)&&(!s||[b.note,b.sport,b.market,b.bookmaker].some(v=>(v||"").toLowerCase().includes(s)))).sort((a,b)=>new Date(b.date)-new Date(a.date))}
+  function renderTickets(){const list=filteredTickets();$("ticketList").innerHTML=list.length?list.map(ticketHtml).join(""):`<div class="empty">No hay tickets con estos filtros.</div>`}
+  function renderRecent(){const list=[...state.bets].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,5);$("recentTickets").innerHTML=list.length?list.map(ticketHtml).join(""):`<div class="empty">Todavía no tienes tickets registrados.</div>`}
+  function renderMovements(){const rows=[...state.movements].sort((a,b)=>new Date(b.date)-new Date(a.date));$("movementTable").innerHTML=rows.length?rows.map(x=>`<tr><td>${fmtDate(x.date)}</td><td>${x.type==="deposit"?"Recarga":"Retiro"}</td><td>${safe(x.note||"Sin concepto")}</td><td class="${x.type==="deposit"?"positive":"negative"}">${x.type==="deposit"?"+":"-"}${money(x.amount)}</td><td><button class="btn small danger" onclick="deleteMovement('${x.id}')">Eliminar</button></td></tr>`).join(""):`<tr><td colspan="5"><div class="empty">No hay movimientos registrados.</div></td></tr>`}
+  function renderSportOptions(){const sports=[...new Set(state.bets.map(b=>(b.sport||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));["ticketSportFilter","analysisSport"].forEach(id=>{const el=$(id),cur=el.value;el.innerHTML=`<option value="all">Todos</option>`+sports.map(s=>`<option value="${safe(s)}">${safe(s)}</option>`).join("");if([...el.options].some(o=>o.value===cur))el.value=cur})}
 
   function destroyChart(name){if(charts[name]){charts[name].destroy();charts[name]=null}}
-  function baseChartOptions(){
-    return {responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:"#a9b7cc",font:{size:11}}}},
-      scales:{x:{ticks:{color:"#71829c"},grid:{color:"rgba(255,255,255,.04)"}},y:{ticks:{color:"#71829c"},grid:{color:"rgba(255,255,255,.06)"}}}};
+  function baseChartOptions(){return {responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},plugins:{legend:{labels:{color:"#aebcd1",font:{size:10}}},tooltip:{backgroundColor:"#08111f",borderColor:"#27436b",borderWidth:1,titleColor:"#fff",bodyColor:"#c9d6e8"}},scales:{x:{ticks:{color:"#7187a5",font:{size:10}},grid:{color:"rgba(255,255,255,.035)"}},y:{ticks:{color:"#7187a5",font:{size:10}},grid:{color:"rgba(255,255,255,.055)"}}}}}
+  function dashboardSeries(){
+    const events=[];state.movements.forEach(m=>events.push({date:m.date,kind:"move",m}));state.bets.forEach(b=>{events.push({date:b.date,kind:"stake",b});if(isSettled(b))events.push({date:b.settledAt||b.date,kind:"return",b})});events.sort((a,b)=>new Date(a.date)-new Date(b.date));
+    let available=num(state.initialBank),equity=num(state.initialBank);const pts=[{d:"Inicio",available,equity}];events.forEach(e=>{if(e.kind==="move"){const d=e.m.type==="deposit"?num(e.m.amount):-num(e.m.amount);available+=d;equity+=d}else if(e.kind==="stake")available-=num(e.b.amount);else if(e.kind==="return"){available+=betReturn(e.b);equity+=betProfit(e.b)}pts.push({d:fmtDay(e.date),available,equity})});return pts;
   }
-  function renderDashboardCharts(){
-    const c=calc();
-    const sorted=[...state.bets].sort((a,b)=>new Date(a.date)-new Date(b.date));
-    let running=num(state.initialBank);
-    const points=[{d:"Inicio",v:running}];
-    const events=[
-      ...state.movements.map(x=>({date:x.date,type:x.type,amount:num(x.amount)})),
-      ...state.bets.map(x=>({date:x.date,type:"bet",amount:num(x.amount),status:x.status,odds:num(x.odds)}))
-    ].sort((a,b)=>new Date(a.date)-new Date(b.date));
-    events.forEach(e=>{
-      if(e.type==="deposit") running+=e.amount;
-      if(e.type==="withdraw") running-=e.amount;
-      if(e.type==="bet"){running-=e.amount;if(e.status==="won")running+=e.amount*e.odds;}
-      points.push({d:fmtDay(e.date),v:running});
-    });
-    destroyChart("bank");
-    charts.bank=new Chart($("bankChart"),{type:"line",data:{labels:points.map(x=>x.d),datasets:[{label:"Bank",data:points.map(x=>x.v),tension:.35,borderWidth:2,pointRadius:2}]},options:baseChartOptions()});
-    destroyChart("result");
-    charts.result=new Chart($("resultChart"),{type:"doughnut",data:{labels:["Ganados","Perdidos","Pendientes"],datasets:[{data:[c.won.length,c.lost.length,state.bets.filter(x=>x.status==="pending").length],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{color:"#a9b7cc",font:{size:11}}}}}});
-  }
+  function renderDashboardCharts(){const c=calc(),pts=dashboardSeries();destroyChart("bank");charts.bank=new Chart($("bankChart"),{type:"line",data:{labels:pts.map(x=>x.d),datasets:[{label:"Bank disponible",data:pts.map(x=>x.available),tension:.32,borderWidth:2,pointRadius:1.5},{label:"Equity realizada",data:pts.map(x=>x.equity),tension:.32,borderWidth:2,pointRadius:1.5}]},options:baseChartOptions()});
+    destroyChart("result");charts.result=new Chart($("resultChart"),{type:"doughnut",data:{labels:["Ganados","Perdidos","Pendientes","Anulados","Cashout"],datasets:[{data:[c.won.length,c.lost.length,c.pendingBets.length,c.voided.length,c.cashout.length],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{color:"#aebcd1",font:{size:10}}}}}});
+    const byMonth={};state.bets.filter(isSettled).forEach(b=>{const key=(b.settledAt||b.date).slice(0,7);byMonth[key]=(byMonth[key]||0)+betProfit(b)});const keys=Object.keys(byMonth).sort();destroyChart("monthly");charts.monthly=new Chart($("monthlyChart"),{type:"bar",data:{labels:keys.map(monthLabel),datasets:[{label:"P/L",data:keys.map(k=>byMonth[k]),borderWidth:1}]},options:baseChartOptions()});}
 
-  function getRangeBets(){
-    const from=$("filterFrom").value, to=$("filterTo").value;
-    return state.bets.filter(b=>{
-      const d=b.date.slice(0,10);
-      return (!from||d>=from)&&(!to||d<=to);
-    });
-  }
+  function inDateRange(date){const d=(date||"").slice(0,10),from=$("filterFrom").value,to=$("filterTo").value;return (!from||d>=from)&&(!to||d<=to)}
+  function analysisBets(){const sport=$("analysisSport").value,status=$("analysisStatus").value;return state.bets.filter(b=>inDateRange(b.date)&&(sport==="all"||(b.sport||"")===sport)&&(status==="all"||(status==="settled"?isSettled(b):b.status===status))).sort((a,b)=>new Date(a.date)-new Date(b.date))}
+  function analysisMovements(){return state.movements.filter(m=>inDateRange(m.date))}
   function renderAnalysis(){
-    const bets=getRangeBets();
-    const dep=state.movements.filter(x=>x.type==="deposit"&&inRange(x.date)).reduce((a,x)=>a+num(x.amount),0);
-    const wit=state.movements.filter(x=>x.type==="withdraw"&&inRange(x.date)).reduce((a,x)=>a+num(x.amount),0);
-    const staked=bets.reduce((a,x)=>a+num(x.amount),0);
-    const profit=bets.filter(x=>x.status==="won").reduce((a,x)=>a+num(x.amount)*(num(x.odds)-1),0)-bets.filter(x=>x.status==="lost").reduce((a,x)=>a+num(x.amount),0);
-    const roi=staked?profit/staked*100:0;
-    $("aStaked").textContent=money(staked);$("aProfit").textContent=money(profit);$("aProfit").className=`value ${profit>=0?"positive":"negative"}`;
-    $("aDeposits").textContent=money(dep);$("aWithdrawals").textContent=money(wit);$("aRoi").textContent=`${roi.toFixed(2)}%`;
-    const settled=bets.filter(x=>x.status!=="pending"), hits=settled.filter(x=>x.status==="won").length;
-    $("aHitRate").textContent=`${settled.length?(hits/settled.length*100).toFixed(2):"0.00"}%`;
-    $("aAvgOdds").textContent=bets.length?(bets.reduce((a,x)=>a+num(x.odds),0)/bets.length).toFixed(2):"0.00";
-    $("aAvgStake").textContent=money(bets.length?staked/bets.length:0);
-    const byMonth={};
-    bets.forEach(b=>{const k=b.date.slice(0,7);byMonth[k]??={staked:0,won:0,lost:0};byMonth[k].staked+=num(b.amount);if(b.status==="won")byMonth[k].won+=num(b.amount)*num(b.odds);if(b.status==="lost")byMonth[k].lost+=num(b.amount)});
-    const labels=Object.keys(byMonth).sort();
-    destroyChart("volume");
-    charts.volume=new Chart($("volumeChart"),{type:"bar",data:{labels,datasets:[
-      {label:"Apostado",data:labels.map(k=>byMonth[k].staked),borderWidth:1},
-      {label:"Retorno ganado",data:labels.map(k=>byMonth[k].won),borderWidth:1},
-      {label:"Perdido",data:labels.map(k=>byMonth[k].lost),borderWidth:1}
-    ]},options:baseChartOptions()});
-    destroyChart("periodResult");
-    charts.periodResult=new Chart($("periodResultChart"),{type:"bar",data:{labels:["Ganados","Perdidos","Pendientes"],datasets:[{label:"Tickets",data:[bets.filter(x=>x.status==="won").length,bets.filter(x=>x.status==="lost").length,bets.filter(x=>x.status==="pending").length],borderWidth:1}]},options:{...baseChartOptions(),plugins:{legend:{display:false}}}});
+    const bets=analysisBets(),settled=bets.filter(isSettled),wl=settled.filter(b=>b.status==="won"||b.status==="lost"),wins=wl.filter(b=>b.status==="won");const staked=bets.reduce((a,b)=>a+num(b.amount),0),settledStake=settled.reduce((a,b)=>a+num(b.amount),0),profit=settled.reduce((a,b)=>a+betProfit(b),0),roi=settledStake?profit/settledStake*100:0,hit=wl.length?wins.length/wl.length*100:0;
+    const avgOdds=bets.length?bets.reduce((a,b)=>a+num(b.odds),0)/bets.length:0,avgStake=bets.length?staked/bets.length:0;const dd=drawdown(bets,state.initialBank,analysisMovements());const evs=bets.filter(b=>b.modelProb).map(b=>evPct(b.odds,b.modelProb)).filter(v=>v!==null),avgEv=evs.length?evs.reduce((a,v)=>a+v,0)/evs.length:null;
+    $("aStaked").textContent=money(staked);$("aProfit").textContent=money(profit);$("aProfit").className=`value ${profit>=0?"positive":"negative"}`;$("aRoi").textContent=pct(roi);$("aRoi").className=`value ${roi>=0?"positive":"negative"}`;$("aHitRate").textContent=pct(hit);$("aAvgOdds").textContent=avgOdds.toFixed(2);$("aAvgStake").textContent=money(avgStake);$("aMaxDd").textContent=pct(dd.maxDd);$("aAvgEv").textContent=avgEv===null?"—":pct(avgEv);
+    renderAnalysisCharts(bets);renderDiagnostic(bets);
   }
-  function inRange(date){
-    const d=date.slice(0,10),from=$("filterFrom").value,to=$("filterTo").value;
-    return (!from||d>=from)&&(!to||d<=to);
+  function renderAnalysisCharts(bets){
+    const settled=bets.filter(isSettled).sort((a,b)=>new Date(a.settledAt||a.date)-new Date(b.settledAt||b.date));let run=0;const profitPts=settled.map(b=>{run+=betProfit(b);return {d:fmtDay(b.settledAt||b.date),v:run}});destroyChart("profit");charts.profit=new Chart($("profitChart"),{type:"line",data:{labels:profitPts.map(x=>x.d),datasets:[{label:"P/L acumulado",data:profitPts.map(x=>x.v),tension:.3,borderWidth:2,pointRadius:2}]},options:baseChartOptions()});
+    const bySport={};settled.forEach(b=>{const k=(b.sport||"Sin categoría").trim()||"Sin categoría";bySport[k]=(bySport[k]||0)+betProfit(b)});const sports=Object.keys(bySport).sort((a,b)=>bySport[b]-bySport[a]);destroyChart("sport");charts.sport=new Chart($("sportChart"),{type:"bar",data:{labels:sports,datasets:[{label:"P/L",data:sports.map(s=>bySport[s]),borderWidth:1}]},options:{...baseChartOptions(),indexAxis:sports.length>6?"y":"x"}});
+    const names=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"],vals=Array(7).fill(0);settled.forEach(b=>{vals[new Date(b.date).getDay()]+=betProfit(b)});destroyChart("dow");charts.dow=new Chart($("dowChart"),{type:"bar",data:{labels:names,datasets:[{label:"P/L",data:vals,borderWidth:1}]},options:baseChartOptions()});
+  }
+  function renderDiagnostic(bets){
+    const settled=bets.filter(isSettled),wl=settled.filter(b=>b.status==="won"||b.status==="lost"),wins=wl.filter(b=>b.status==="won"),losses=wl.filter(b=>b.status==="lost");const avgWin=wins.length?wins.reduce((a,b)=>a+betProfit(b),0)/wins.length:0,avgLoss=losses.length?Math.abs(losses.reduce((a,b)=>a+betProfit(b),0)/losses.length):0;const st=streakInfo(bets);const probs=bets.filter(b=>b.modelProb),clvs=bets.filter(b=>b.closingOdds);const avgEdge=probs.length?probs.reduce((a,b)=>a+edgePct(b.odds,b.modelProb),0)/probs.length:null;const avgClv=clvs.length?clvs.reduce((a,b)=>a+clvPct(b.odds,b.closingOdds),0)/clvs.length:null;
+    const rows=[["Tickets analizados",bets.length],["Liquidados",settled.length],["Ganados / Perdidos",`${wins.length} / ${losses.length}`],["Ganancia media por ganador",money(avgWin)],["Pérdida media por perdedor",money(avgLoss)],["Mejor racha W",`${st.bestW}W`],["Mayor racha L",`${st.bestL}L`],["Edge medio registrado",avgEdge===null?"—":pct(avgEdge)],["CLV medio registrado",avgClv===null?"—":pct(avgClv)]];$("diagnosticTable").innerHTML=rows.map(r=>`<tr><td class="muted">${r[0]}</td><td class="right"><strong>${r[1]}</strong></td></tr>`).join("");
   }
 
-  function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+  function renderQuality(){const c=calc();$("q1").classList.toggle("on",num(state.initialBank)>0);$("q2").classList.toggle("on",state.bets.length>0);$("q3").classList.toggle("on",c.settled.length>0);$("q4").classList.toggle("on",state.bets.some(b=>b.sport||b.modelProb||b.closingOdds))}
+  function previewBet(){const amount=num($("betAmount").value),odds=num($("betOdds").value),prob=num($("betProb").value);$("previewReturn").textContent=money(amount*odds);$("previewImplied").textContent=odds?pct(impliedProb(odds)):"0.00%";const edge=prob&&odds?edgePct(odds,prob):null,ev=prob&&odds?evPct(odds,prob):null;$("previewEdge").textContent=edge===null?"—":pct(edge);$("previewEdge").className=edge===null?"":edge>=0?"positive":"negative";$("previewEv").textContent=ev===null?"—":pct(ev);$("previewEv").className=ev===null?"":ev>=0?"positive":"negative"}
 
-  window.openResult=id=>{
-    const b=state.bets.find(x=>x.id===id);if(!b)return;
-    resultBetId=id;$("modalStake").textContent=money(b.amount);$("modalOdds").textContent=num(b.odds).toFixed(2);
-    $("modalReturn").textContent=money(num(b.amount)*num(b.odds));$("resultModalText").textContent=b.note||"Ticket general";
-    $("resultModal").classList.add("open");
-  };
-  window.deleteBet=id=>{
-    if(!confirm("¿Eliminar este ticket? Esta acción modificará el historial y el bank calculado."))return;
-    state.bets=state.bets.filter(x=>x.id!==id);save();toast("Ticket eliminado.");
-  };
-  window.deleteMovement=id=>{
-    if(!confirm("¿Eliminar este movimiento?"))return;
-    state.movements=state.movements.filter(x=>x.id!==id);save();toast("Movimiento eliminado.");
-  };
+  window.openResult=id=>{const b=state.bets.find(x=>x.id===id);if(!b)return;resultBetId=id;$("modalStake").textContent=money(b.amount);$("modalOdds").textContent=num(b.odds).toFixed(2);$("modalReturn").textContent=money(num(b.amount)*num(b.odds));$("resultModalText").textContent=b.note||"Ticket general";$("cashoutField").style.display="none";$("cashoutActions").style.display="none";document.querySelector("#resultModal .modal-actions").style.display="flex";$("cashoutAmount").value="";$("resultModal").classList.add("open")};
+  window.deleteBet=id=>{if(!confirm("¿Eliminar este ticket? Cambiará el historial y los cálculos del bank."))return;state.bets=state.bets.filter(x=>x.id!==id);save();toast("Ticket eliminado.")};
+  window.deleteMovement=id=>{if(!confirm("¿Eliminar este movimiento?"))return;state.movements=state.movements.filter(x=>x.id!==id);save();toast("Movimiento eliminado.")};
+  function setResult(status,actualReturn=null){const b=state.bets.find(x=>x.id===resultBetId);if(!b)return;b.status=status;b.settledAt=dateNow();b.actualReturn=status==="won"?num(b.amount)*num(b.odds):status==="void"?num(b.amount):status==="lost"?0:num(actualReturn);$("resultModal").classList.remove("open");resultBetId=null;save();toast(`Ticket marcado como ${statusLabel[status]}.`)}
 
-  function setResult(status){
-    const b=state.bets.find(x=>x.id===resultBetId);if(!b)return;
-    b.status=status; b.settledAt=new Date().toISOString();
-    $("resultModal").classList.remove("open");resultBetId=null;save();
-    toast(status==="won"?"Ticket marcado como GANADO.":"Ticket marcado como PERDIDO.");
-  }
-
-  // Navigation
-  const titles={dashboard:"Dashboard",tickets:"Tickets",movimientos:"Movimientos",analisis:"Análisis",configuracion:"Configuración"};
-  function go(view){
-    document.querySelectorAll(".view").forEach(x=>x.classList.toggle("active",x.id===view));
-    document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.view===view));
-    $("pageTitle").textContent=titles[view]||"Dashboard";$("sidebar").classList.remove("open");
-    window.scrollTo({top:0,behavior:"smooth"});
-  }
+  const titles={dashboard:["Dashboard","Vista ejecutiva de capital, rendimiento y riesgo."],tickets:["Tickets","Registro, liquidación y trazabilidad de apuestas."],movimientos:["Movimientos","Control de recargas, retiros y bank inicial."],analisis:["Análisis","Auditoría estadística por período y categoría."],configuracion:["Configuración","Respaldo, exportación e integridad de datos."]};
+  function go(view){document.querySelectorAll(".view").forEach(x=>x.classList.toggle("active",x.id===view));document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.view===view));$("pageTitle").textContent=titles[view]?.[0]||"Dashboard";$("pageSub").textContent=titles[view]?.[1]||"";$("sidebar").classList.remove("open");window.scrollTo({top:0,behavior:"smooth"});if(view==="analisis")renderAnalysis()}
   document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.view)));
 
-  $("ticketForm").addEventListener("submit",e=>{
-    e.preventDefault();
-    const amount=num($("betAmount").value),odds=num($("betOdds").value);
-    if(amount<=0||odds<1.01)return toast("Revisa importe y cuota.");
-    state.bets.push({id:uid(),amount,odds,date:$("betDate").value||dateNow(),note:$("betNote").value.trim(),status:"pending"});
-    e.target.reset();$("betDate").value=dateNow();save();toast("Ticket registrado como pendiente.");
-  });
-  $("movementForm").addEventListener("submit",e=>{
-    e.preventDefault();
-    const amount=num($("moveAmount").value);if(amount<=0)return toast("El importe debe ser mayor a 0.");
-    state.movements.push({id:uid(),type:$("moveType").value,amount,date:$("moveDate").value||dateNow(),note:$("moveNote").value.trim()});
-    e.target.reset();$("moveDate").value=dateNow();save();toast("Movimiento guardado.");
-  });
-  $("saveInitialBank").addEventListener("click",()=>{
-    state.initialBank=num($("initialBankInput").value);save();toast("Bank inicial actualizado.");
-  });
-  $("ticketFilter").addEventListener("change",renderTickets);
-  $("closeModal").addEventListener("click",()=>$("resultModal").classList.remove("open"));
-  $("markWon").addEventListener("click",()=>setResult("won"));
-  $("markLost").addEventListener("click",()=>setResult("lost"));
-  $("resultModal").addEventListener("click",e=>{if(e.target.id==="resultModal")$("resultModal").classList.remove("open")});
-  $("menuBtn").addEventListener("click",()=>$("sidebar").classList.toggle("open"));
+  $("ticketForm").addEventListener("submit",e=>{e.preventDefault();const amount=num($("betAmount").value),odds=num($("betOdds").value),prob=$("betProb").value?num($("betProb").value):null,close=$("betCloseOdds").value?num($("betCloseOdds").value):null;if(amount<=0||odds<1.01)return toast("Revisa importe y cuota.");state.bets.push(normalizeBet({id:uid(),amount,odds,date:$("betDate").value||dateNow(),note:$("betNote").value.trim(),sport:$("betSport").value.trim(),market:$("betMarket").value.trim(),bookmaker:$("betBook").value.trim(),modelProb:prob,closingOdds:close,status:"pending"}));e.target.reset();$("betDate").value=dateNow();save();toast("Ticket registrado como pendiente.")});
+  $("movementForm").addEventListener("submit",e=>{e.preventDefault();const amount=num($("moveAmount").value);if(amount<=0)return toast("El importe debe ser mayor a 0.");state.movements.push({id:uid(),type:$("moveType").value,amount,date:$("moveDate").value||dateNow(),note:$("moveNote").value.trim()});e.target.reset();$("moveDate").value=dateNow();save();toast("Movimiento guardado.")});
+  $("saveInitialBank").addEventListener("click",()=>{state.initialBank=num($("initialBankInput").value);save();toast("Bank inicial actualizado.")});
+  ["ticketFilter","ticketSportFilter"].forEach(id=>$(id).addEventListener("change",renderTickets));$("ticketSearch").addEventListener("input",renderTickets);["betAmount","betOdds","betProb"].forEach(id=>$(id).addEventListener("input",previewBet));
+  $("closeModal").addEventListener("click",()=>$("resultModal").classList.remove("open"));$("markWon").addEventListener("click",()=>setResult("won"));$("markLost").addEventListener("click",()=>setResult("lost"));$("markVoid").addEventListener("click",()=>setResult("void"));
+  $("toggleCashout").addEventListener("click",()=>{$("cashoutField").style.display="block";document.querySelector("#resultModal .modal-actions").style.display="none";$("cashoutActions").style.display="flex"});$("cancelCashout").addEventListener("click",()=>{$("cashoutField").style.display="none";$("cashoutActions").style.display="none";document.querySelector("#resultModal .modal-actions").style.display="flex"});$("saveCashout").addEventListener("click",()=>{const v=num($("cashoutAmount").value);if(v<0)return toast("Retorno inválido.");setResult("cashout",v)});
+  $("resultModal").addEventListener("click",e=>{if(e.target.id==="resultModal")$("resultModal").classList.remove("open")});$("menuBtn").addEventListener("click",()=>$("sidebar").classList.toggle("open"));
+  ["filterFrom","filterTo","analysisSport","analysisStatus"].forEach(id=>$(id).addEventListener("change",renderAnalysis));$("applyFilters").addEventListener("click",renderAnalysis);$("clearFilters").addEventListener("click",()=>{$("filterFrom").value="";$("filterTo").value="";$("analysisSport").value="all";$("analysisStatus").value="all";renderAnalysis()});
 
-  $("applyFilters").addEventListener("click",renderAnalysis);
-  $("clearFilters").addEventListener("click",()=>{$("filterFrom").value="";$("filterTo").value="";renderAnalysis()});
-  ["filterFrom","filterTo"].forEach(id=>$(id).addEventListener("change",renderAnalysis));
+  function download(name,text,type){const blob=new Blob([text],{type});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),0)}
+  function exportJson(){download(`bank-control-pro-${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(state,null,2),"application/json");toast("Respaldo JSON descargado.")}
+  function csvEscape(v){const s=String(v??"");return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s}
+  function exportCsv(){const head=["id","fecha","liquidado","estado","stake","cuota","retorno","profit","deporte","mercado","casa","probabilidad_modelo","cuota_cierre","edge_pct","ev_pct","clv_pct","referencia"];const rows=state.bets.map(b=>[b.id,b.date,b.settledAt||"",b.status,b.amount,b.odds,betReturn(b),betProfit(b),b.sport,b.market,b.bookmaker,b.modelProb??"",b.closingOdds??"",b.modelProb?edgePct(b.odds,b.modelProb).toFixed(4):"",b.modelProb?evPct(b.odds,b.modelProb).toFixed(4):"",b.closingOdds?clvPct(b.odds,b.closingOdds).toFixed(4):"",b.note]);const csv=[head,...rows].map(r=>r.map(csvEscape).join(",")).join("\n");download(`bank-control-tickets-${new Date().toISOString().slice(0,10)}.csv`,csv,"text/csv;charset=utf-8");toast("CSV descargado.")}
+  $("exportBtn").addEventListener("click",exportJson);$("exportJson").addEventListener("click",exportJson);$("exportCsv").addEventListener("click",exportCsv);
+  $("importFile").addEventListener("change",e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const data=JSON.parse(reader.result);if(!Array.isArray(data.bets)||!Array.isArray(data.movements))throw Error();if(confirm("¿Reemplazar los datos actuales por este respaldo?")){state={...defaultState,...data,bets:data.bets.map(normalizeBet)};save();toast("Respaldo restaurado.")}}catch(err){toast("Archivo de respaldo no válido.")}};reader.readAsText(file)});
+  $("clearAll").addEventListener("click",()=>{if(confirm("Esto borrará TODOS los tickets y movimientos de este navegador. ¿Continuar?")){state={...defaultState};save();toast("Datos eliminados.")}});
 
-  function exportData(){
-    const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
-    const a=document.createElement("a");a.href=URL.createObjectURL(blob);
-    a.download=`bank-control-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href);
-    toast("Respaldo descargado.");
-  }
-  $("exportBtn").addEventListener("click",exportData);$("exportBtn2").addEventListener("click",exportData);
-  $("importFile").addEventListener("change",e=>{
-    const file=e.target.files[0];if(!file)return;
-    const reader=new FileReader();
-    reader.onload=()=>{
-      try{
-        const data=JSON.parse(reader.result);
-        if(!Array.isArray(data.bets)||!Array.isArray(data.movements))throw Error();
-        if(confirm("¿Reemplazar los datos actuales por este respaldo?")){state={...defaultState,...data};save();toast("Respaldo restaurado.");}
-      }catch(err){toast("Archivo de respaldo no válido.");}
-    };reader.readAsText(file);
-  });
-  $("clearAll").addEventListener("click",()=>{
-    if(confirm("Esto borrará TODOS los tickets y movimientos de este navegador. ¿Continuar?")){
-      state={...defaultState};save();toast("Todos los datos fueron eliminados.");
-    }
-  });
-
-  // Initial defaults
-  $("betDate").value=dateNow();$("moveDate").value=dateNow();
-  renderAll();
+  $("betDate").value=dateNow();$("moveDate").value=dateNow();renderAll();
 })();
 </script>
 </body>
